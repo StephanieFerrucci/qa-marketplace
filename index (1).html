@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Marketplace</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #17171e;
+    --surface2: #1f1f28;
+    --surface3: #272733;
+    --border: #2e2e3d;
+    --accent: #6c63ff;
+    --accent2: #a78bfa;
+    --green: #22c55e;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --text: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #5a5a70;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .user-badge { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px 6px 8px; font-size: 13px; cursor: pointer; }
+  .avatar { width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+  .nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 4px; overflow-x: auto; }
+  .nav-btn { padding: 14px 18px; background: none; border: none; color: var(--text2); font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: inherit; display: flex; align-items: center; gap: 7px; }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .badge { background: var(--accent); color: white; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; min-width: 20px; text-align: center; }
+
+  .main { flex: 1; padding: 28px 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .stat-label { font-size: 12px; color: var(--text2); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .stat-value { font-size: 32px; font-weight: 700; line-height: 1; }
+  .stat-sub { font-size: 12px; color: var(--text3); margin-top: 6px; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.purple { color: var(--accent2); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+  .card-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-full { grid-column: 1 / -1; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 13px; color: var(--text2); font-weight: 500; }
+  .form-group input, .form-group select, .form-group textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 14px; padding: 10px 12px; transition: border-color 0.2s; outline: none; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 90px; }
+  .form-group select option { background: var(--surface2); }
+  .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+  .btn { padding: 10px 20px; border-radius: var(--radius-sm); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.18s; display: inline-flex; align-items: center; gap: 7px; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #5a52e8; }
+  .btn-secondary { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--accent); }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red); }
+  .btn-danger:hover { background: var(--red); color: white; }
+  .btn-green { background: var(--green); color: white; }
+  .btn-green:hover { background: #16a34a; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .toolbar select, .toolbar input { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 13px; padding: 8px 12px; outline: none; }
+  .toolbar select:focus, .toolbar input:focus { border-color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: var(--surface2); padding: 10px 14px; text-align: left; color: var(--text2); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid var(--border); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 12px 14px; vertical-align: middle; }
+
+  .tag { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .tag-pending { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .tag-done { background: rgba(34,197,94,0.15); color: var(--green); }
+  .site-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 6px; font-size: 12px; font-weight: 500; background: var(--surface3); color: var(--text2); }
+
+  .metrics-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .metrics-title { font-size: 20px; font-weight: 700; }
+  .filter-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .filter-bar select { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 13px; padding: 8px 12px; outline: none; }
+  .filter-bar select:focus { border-color: var(--accent); }
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 24px; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+  .metric-card-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+  .metric-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-row-label { color: var(--text2); display: flex; align-items: center; gap: 8px; }
+  .metric-row-val { font-weight: 600; font-family: 'DM Mono', monospace; }
+  .bar-bg { width: 80px; height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; margin-left: 8px; }
+  .bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.5s ease; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 380px; }
+  .login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+  .login-logo .logo-icon { width: 40px; height: 40px; font-size: 18px; border-radius: 10px; }
+  .login-logo span { font-size: 20px; font-weight: 700; }
+  .login-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .login-sub { color: var(--text2); font-size: 14px; margin-bottom: 28px; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+  .modal-close { background: none; border: none; color: var(--text2); font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+
+  .empty { text-align: center; padding: 48px 20px; color: var(--text3); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--green); border-radius: var(--radius-sm); padding: 12px 18px; font-size: 14px; font-weight: 500; z-index: 999; animation: slideIn 0.3s ease; max-width: 300px; }
+  .toast.error { border-left-color: var(--red); }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--text3); gap: 10px; font-size: 14px; }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .main { padding: 16px; } .topbar { padding: 0 16px; } .nav { padding: 0 12px; } .nav-btn { padding: 12px 12px; font-size: 13px; } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">💬</div>
+      <span>Q&A Marketplace</span>
+    </div>
+    <div class="login-title">Bem-vindo de volta</div>
+    <div class="login-sub">Painel de atendimento centralizado</div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="seu@email.com">
+    </div>
+    <div class="form-group" style="margin-bottom:20px">
+      <label>Senha</label>
+      <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="doLogin()" id="btnLogin">Entrar</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appPage" style="display:none;flex-direction:column;min-height:100vh;flex:1">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">💬</div>
+      Q&A Marketplace
+    </div>
+    <div class="topbar-right">
+      <div class="user-badge" onclick="doLogout()">
+        <div class="avatar" id="userInitial">A</div>
+        <span id="userNameBadge">Admin</span>
+        <span style="color:var(--text3);font-size:11px">✕ sair</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="goTo('nova')" id="tab-nova">➕ Nova pergunta</button>
+    <button class="nav-btn" onclick="goTo('pendentes')" id="tab-pendentes">⏳ Pendentes <span class="badge" id="pendBadge">0</span></button>
+    <button class="nav-btn" onclick="goTo('historico')" id="tab-historico">📋 Histórico</button>
+    <button class="nav-btn" onclick="goTo('metricas')" id="tab-metricas">📊 Métricas</button>
+    <button class="nav-btn" onclick="goTo('usuarios')" id="tab-usuarios">👥 Usuários</button>
+  </div>
+
+  <div class="main">
+
+    <!-- NOVA PERGUNTA -->
+    <div class="section active" id="sec-nova">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Hoje</div><div class="stat-value green" id="statHoje">0</div><div class="stat-sub">perguntas registradas</div></div>
+        <div class="stat-card"><div class="stat-label">Pendentes</div><div class="stat-value yellow" id="statPend">0</div><div class="stat-sub">aguardando resposta</div></div>
+        <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value blue" id="statTotal">0</div><div class="stat-sub">perguntas no sistema</div></div>
+        <div class="stat-card"><div class="stat-label">Respondidas</div><div class="stat-value purple" id="statResp">0</div><div class="stat-sub">perguntas respondidas</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">✏️ Registrar nova pergunta</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Site *</label>
+            <select id="novoSite">
+              <option value="">Selecione...</option>
+              <option>Mercado Livre</option>
+              <option>Magazine Luiza</option>
+              <option>Shopee</option>
+              <option>Amazon</option>
+              <option>Outro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Anúncio / Produto *</label>
+            <input type="text" id="novoAnuncio" placeholder="Nome do produto ou link">
+          </div>
+          <div class="form-group form-full">
+            <label>Pergunta do cliente *</label>
+            <textarea id="novoPergunta" placeholder="Digite a pergunta do cliente..."></textarea>
+          </div>
+          <div class="form-group form-full">
+            <label>Sua resposta <span style="color:var(--text3)">(opcional — pode responder depois)</span></label>
+            <textarea id="novoResposta" placeholder="Digite sua resposta..."></textarea>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="salvarPergunta()" id="btnSalvar">💾 Salvar registro</button>
+          <button class="btn btn-secondary" onclick="limparForm()">Limpar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PENDENTES -->
+    <div class="section" id="sec-pendentes">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="card-title" style="margin-bottom:0">⏳ Perguntas Pendentes</div>
+          <button class="btn btn-secondary btn-sm" onclick="renderPendentes()">↻ Atualizar</button>
+        </div>
+        <div id="listaP"></div>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="section" id="sec-historico">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div class="card-title" style="margin-bottom:0">📋 Histórico</div>
+          <button class="btn btn-green btn-sm" onclick="exportarExcel()">📥 Exportar Excel</button>
+        </div>
+        <div class="toolbar">
+          <select id="filtroSite" onchange="renderHistorico()">
+            <option value="">Todos os sites</option>
+            <option>Mercado Livre</option>
+            <option>Magazine Luiza</option>
+            <option>Shopee</option>
+            <option>Amazon</option>
+            <option>Outro</option>
+          </select>
+          <select id="filtroStatus" onchange="renderHistorico()">
+            <option value="">Todos os status</option>
+            <option value="pendente">Pendentes</option>
+            <option value="respondida">Respondidas</option>
+          </select>
+          <input type="text" id="filtroBusca" placeholder="🔍 Buscar..." oninput="renderHistorico()" style="min-width:180px">
+        </div>
+        <div class="table-wrap" style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Data</th><th>Site</th><th>Produto</th><th>Pergunta</th><th>Status</th><th>Atendente</th><th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbHistorico"></tbody>
+          </table>
+        </div>
+        <div id="emptyHistorico" class="empty" style="display:none"><div class="empty-icon">📭</div><div class="empty-text">Nenhum registro encontrado</div></div>
+      </div>
+    </div>
+
+    <!-- MÉTRICAS -->
+    <div class="section" id="sec-metricas">
+      <div class="metrics-header">
+        <div class="metrics-title">📊 Métricas</div>
+        <div class="filter-bar">
+          <select id="filtroAno" onchange="renderMetricas()"></select>
+          <select id="filtroMes" onchange="renderMetricas()">
+            <option value="">Todos os meses</option>
+            <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+            <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+            <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+            <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="renderMetricas()">↻ Atualizar</button>
+          <button class="btn btn-green btn-sm" onclick="exportarExcelMetricas()">📥 Exportar Excel</button>
+        </div>
+      </div>
+      <div class="stat-grid" id="metricaStats"></div>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-card-title">🏪 Por site</div><div id="metricaSites"></div></div>
+        <div class="metric-card"><div class="metric-card-title">👤 Por atendente</div><div id="metricaAtendentes"></div></div>
+        <div class="metric-card"><div class="metric-card-title" id="diasTitle">📅 Por mês</div><div id="metricaDias"></div></div>
+      </div>
+    </div>
+
+    <!-- USUÁRIOS -->
+    <div class="section" id="sec-usuarios">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div class="card-title" style="margin-bottom:0">👥 Usuários</div>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalUser()">+ Novo usuário</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Nome</th><th>Email</th><th>Perfil</th><th>Cadastrado em</th><th>Ações</th></tr></thead>
+            <tbody id="tbUsuarios"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL RESPOSTA -->
+<div class="modal-overlay" id="modalResp" style="display:none">
+  <div class="modal">
+    <div class="modal-title">✏️ Responder pergunta <button class="modal-close" onclick="fecharModal('modalResp')">✕</button></div>
+    <div id="modalRespInfo" style="margin-bottom:16px;font-size:13px;color:var(--text2)"></div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Pergunta do cliente</label>
+      <textarea id="modalRespPerg" readonly style="background:var(--surface3);min-height:70px"></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:20px">
+      <label>Sua resposta *</label>
+      <textarea id="modalRespTexto" placeholder="Digite sua resposta..."></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="salvarResposta()">💾 Salvar resposta</button>
+      <button class="btn btn-secondary" onclick="fecharModal('modalResp')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL USUÁRIO -->
+<div class="modal-overlay" id="modalUser" style="display:none">
+  <div class="modal">
+    <div class="modal-title"><span id="modalUserTitle">+ Novo usuário</span><button class="modal-close" onclick="fecharModal('modalUser')">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group form-full"><label>Nome *</label><input type="text" id="uNome" placeholder="Nome completo"></div>
+      <div class="form-group form-full"><label>Email *</label><input type="email" id="uEmail" placeholder="email@exemplo.com"></div>
+      <div class="form-group form-full"><label>Senha *</label><input type="password" id="uSenha" placeholder="••••••••"></div>
+      <div class="form-group form-full"><label>Perfil</label><select id="uPerfil"><option value="atendente">Atendente</option><option value="admin">Administrador</option></select></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="salvarUsuario()">💾 Salvar</button>
+      <button class="btn btn-secondary" onclick="fecharModal('modalUser')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== SUPABASE ====================
+const SUPABASE_URL = 'https://mdaxoccftnwldhlhlogd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kYXhvY2NmdG53bGRobGhsb2dkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwODEyOTMsImV4cCI6MjA5NDY1NzI5M30.pfLexokHHAf1pNIAknWJO0hH10qt1_E0XiG-siS6LSY';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let editingRespId = null;
+let editingUserId = null;
+let allPerguntas = [];
+
+// ==================== AUTH ====================
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if (!email || !pass) { toast('Preencha email e senha', true); return; }
+
+  document.getElementById('btnLogin').textContent = 'Entrando...';
+  const { data, error } = await db.from('usuarios').select('*').eq('email', email).eq('senha', pass).single();
+
+  if (error || !data) {
+    toast('Email ou senha inválidos', true);
+    document.getElementById('btnLogin').textContent = 'Entrar';
+    return;
+  }
+
+  currentUser = data;
+  sessionStorage.setItem('qaUser', JSON.stringify(data));
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('appPage').style.display = 'flex';
+  document.getElementById('userInitial').textContent = data.nome.charAt(0).toUpperCase();
+  document.getElementById('userNameBadge').textContent = data.nome.split(' ')[0];
+  if (data.perfil !== 'admin') document.getElementById('tab-usuarios').style.display = 'none';
+  await loadPerguntas();
+  refreshStats();
+  updatePendBadge();
+}
+
+function doLogout() {
+  currentUser = null;
+  sessionStorage.removeItem('qaUser');
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('appPage').style.display = 'none';
+  document.getElementById('btnLogin').textContent = 'Entrar';
+}
+
+function tryAutoLogin() {
+  const saved = sessionStorage.getItem('qaUser');
+  if (saved) {
+    currentUser = JSON.parse(saved);
+    document.getElementById('loginEmail').value = currentUser.email;
+    document.getElementById('loginPass').value = currentUser.senha;
+    doLogin();
+  }
+}
+
+// ==================== LOAD DATA ====================
+async function loadPerguntas() {
+  const { data } = await db.from('perguntas').select('*').order('criado_em', { ascending: false });
+  allPerguntas = data || [];
+}
+
+// ==================== NAV ====================
+function goTo(sec) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + sec).classList.add('active');
+  document.getElementById('tab-' + sec).classList.add('active');
+  if (sec === 'pendentes') renderPendentes();
+  if (sec === 'historico') renderHistorico();
+  if (sec === 'metricas') { populateAnoFilter(); renderMetricas(); }
+  if (sec === 'usuarios') renderUsuarios();
+}
+
+// ==================== PERGUNTAS ====================
+async function salvarPergunta() {
+  const site = document.getElementById('novoSite').value;
+  const anuncio = document.getElementById('novoAnuncio').value.trim();
+  const perg = document.getElementById('novoPergunta').value.trim();
+  const resp = document.getElementById('novoResposta').value.trim();
+  if (!site || !anuncio || !perg) { toast('Preencha os campos obrigatórios', true); return; }
+
+  document.getElementById('btnSalvar').textContent = 'Salvando...';
+  const status = resp ? 'respondida' : 'pendente';
+  const row = {
+    id: 'p' + Date.now(),
+    site, anuncio, pergunta: perg, resposta: resp || null, status,
+    atendente: currentUser.nome, atendente_id: currentUser.id,
+    criado_em: new Date().toISOString(),
+    respondido_em: resp ? new Date().toISOString() : null
+  };
+
+  const { error } = await db.from('perguntas').insert(row);
+  if (error) { toast('Erro ao salvar: ' + error.message, true); document.getElementById('btnSalvar').textContent = '💾 Salvar registro'; return; }
+
+  allPerguntas.unshift(row);
+  limparForm();
+  refreshStats();
+  updatePendBadge();
+  toast('Pergunta salva com sucesso!');
+  document.getElementById('btnSalvar').textContent = '💾 Salvar registro';
+}
+
+function limparForm() {
+  ['novoSite','novoAnuncio','novoPergunta','novoResposta'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ==================== PENDENTES ====================
+function renderPendentes() {
+  const pend = allPerguntas.filter(p => p.status === 'pendente');
+  const el = document.getElementById('listaP');
+  if (!pend.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">Nenhuma pergunta pendente!</div></div>';
+    return;
+  }
+  el.innerHTML = pend.map(p => `
+    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div><span class="site-tag">🏪 ${p.site}</span><span style="color:var(--text2);font-size:12px;margin-left:10px">${p.anuncio}</span></div>
+        <span style="font-size:11px;color:var(--text3)">${fmtDate(p.criado_em)}</span>
+      </div>
+      <div style="font-size:14px;margin-bottom:12px;line-height:1.5">${p.pergunta}</div>
+      <button class="btn btn-primary btn-sm" onclick="abrirModalResp('${p.id}')">✏️ Responder</button>
+    </div>
+  `).join('');
+}
+
+function abrirModalResp(id) {
+  const p = allPerguntas.find(x => x.id === id);
+  editingRespId = id;
+  document.getElementById('modalRespInfo').textContent = `${p.site} — ${p.anuncio}`;
+  document.getElementById('modalRespPerg').value = p.pergunta;
+  document.getElementById('modalRespTexto').value = p.resposta || '';
+  document.getElementById('modalResp').style.display = 'flex';
+}
+
+async function salvarResposta() {
+  const resp = document.getElementById('modalRespTexto').value.trim();
+  if (!resp) { toast('Digite uma resposta', true); return; }
+
+  const now = new Date().toISOString();
+  const { error } = await db.from('perguntas').update({ resposta: resp, status: 'respondida', respondido_em: now }).eq('id', editingRespId);
+  if (error) { toast('Erro ao salvar', true); return; }
+
+  const idx = allPerguntas.findIndex(p => p.id === editingRespId);
+  allPerguntas[idx].resposta = resp;
+  allPerguntas[idx].status = 'respondida';
+  allPerguntas[idx].respondido_em = now;
+
+  fecharModal('modalResp');
+  renderPendentes();
+  renderHistorico();
+  refreshStats();
+  updatePendBadge();
+  toast('Resposta salva!');
+}
+
+// ==================== HISTÓRICO ====================
+function renderHistorico() {
+  const site = document.getElementById('filtroSite').value;
+  const status = document.getElementById('filtroStatus').value;
+  const busca = document.getElementById('filtroBusca').value.toLowerCase();
+
+  let data = [...allPerguntas];
+  if (site) data = data.filter(p => p.site === site);
+  if (status) data = data.filter(p => p.status === status);
+  if (busca) data = data.filter(p => p.pergunta.toLowerCase().includes(busca) || p.anuncio.toLowerCase().includes(busca) || p.site.toLowerCase().includes(busca));
+
+  const tb = document.getElementById('tbHistorico');
+  const empty = document.getElementById('emptyHistorico');
+  if (!data.length) { tb.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  tb.innerHTML = data.map((p, i) => `
+    <tr>
+      <td style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">${i+1}</td>
+      <td style="white-space:nowrap;font-size:12px;color:var(--text2)">${fmtDate(p.criado_em)}</td>
+      <td><span class="site-tag">${p.site}</span></td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${p.anuncio}</td>
+      <td style="max-width:200px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.pergunta}">${p.pergunta}</td>
+      <td><span class="tag ${p.status === 'pendente' ? 'tag-pending' : 'tag-done'}">${p.status === 'pendente' ? 'Pendente' : 'Respondida'}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${p.atendente}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="abrirModalResp('${p.id}')">✏️</button>
+        ${currentUser.perfil === 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deletarPergunta('${p.id}')" style="margin-left:4px">🗑️</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function deletarPergunta(id) {
+  if (!confirm('Tem certeza que deseja excluir este registro?')) return;
+  const { error } = await db.from('perguntas').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir', true); return; }
+  allPerguntas = allPerguntas.filter(p => p.id !== id);
+  renderHistorico();
+  refreshStats();
+  updatePendBadge();
+  toast('Registro excluído');
+}
+
+// ==================== EXPORT ====================
+function exportarExcel() {
+  const site = document.getElementById('filtroSite').value;
+  const status = document.getElementById('filtroStatus').value;
+  let data = [...allPerguntas];
+  if (site) data = data.filter(p => p.site === site);
+  if (status) data = data.filter(p => p.status === status);
+  if (!data.length) { toast('Nenhum dado para exportar', true); return; }
+
+  const rows = data.map(p => ({
+    'Data': fmtDate(p.criado_em), 'Site': p.site, 'Produto/Anúncio': p.anuncio,
+    'Pergunta': p.pergunta, 'Resposta': p.resposta || '', 'Status': p.status === 'pendente' ? 'Pendente' : 'Respondida',
+    'Atendente': p.atendente, 'Respondido em': p.respondido_em ? fmtDate(p.respondido_em) : ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Histórico');
+  XLSX.writeFile(wb, `qa-historico-${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Exportado com sucesso!');
+}
+
+function exportarExcelMetricas() {
+  const ano = parseInt(document.getElementById('filtroAno').value);
+  const mesVal = document.getElementById('filtroMes').value;
+  let data = allPerguntas.filter(p => {
+    const d = new Date(p.criado_em);
+    if (d.getFullYear() !== ano) return false;
+    if (mesVal !== '' && d.getMonth() !== parseInt(mesVal)) return false;
+    return true;
+  });
+  if (!data.length) { toast('Nenhum dado para o período', true); return; }
+
+  const sites = {};
+  data.forEach(p => { if (!sites[p.site]) sites[p.site] = {total:0,respondidas:0,pendentes:0}; sites[p.site].total++; if(p.status==='respondida') sites[p.site].respondidas++; else sites[p.site].pendentes++; });
+  const rowsSites = Object.entries(sites).map(([s,v]) => ({'Site':s,'Total':v.total,'Respondidas':v.respondidas,'Pendentes':v.pendentes}));
+
+  const atend = {};
+  data.forEach(p => { atend[p.atendente] = (atend[p.atendente]||0)+1; });
+  const rowsAtend = Object.entries(atend).map(([a,v]) => ({'Atendente':a,'Total':v}));
+
+  const rowsAll = data.map(p => ({'Data':fmtDate(p.criado_em),'Site':p.site,'Produto':p.anuncio,'Pergunta':p.pergunta,'Resposta':p.resposta||'','Status':p.status,'Atendente':p.atendente}));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsSites), 'Por Site');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsAtend), 'Por Atendente');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsAll), 'Detalhes');
+  XLSX.writeFile(wb, `qa-metricas-${ano}${mesVal!==''?'-'+(parseInt(mesVal)+1).toString().padStart(2,'0'):''}.xlsx`);
+  toast('Métricas exportadas!');
+}
+
+// ==================== MÉTRICAS ====================
+function populateAnoFilter() {
+  const sel = document.getElementById('filtroAno');
+  const anos = new Set();
+  allPerguntas.forEach(p => anos.add(new Date(p.criado_em).getFullYear()));
+  anos.add(new Date().getFullYear());
+  const sorted = Array.from(anos).sort((a,b)=>b-a);
+  const cur = sel.value || new Date().getFullYear().toString();
+  sel.innerHTML = sorted.map(a=>`<option value="${a}" ${a.toString()===cur?'selected':''}>${a}</option>`).join('');
+}
+
+function renderMetricas() {
+  const ano = parseInt(document.getElementById('filtroAno').value) || new Date().getFullYear();
+  const mesVal = document.getElementById('filtroMes').value;
+
+  let data = allPerguntas.filter(p => {
+    const d = new Date(p.criado_em);
+    if (d.getFullYear() !== ano) return false;
+    if (mesVal !== '' && d.getMonth() !== parseInt(mesVal)) return false;
+    return true;
+  });
+
+  const total = data.length;
+  const respondidas = data.filter(p=>p.status==='respondida').length;
+  const pendentes = data.filter(p=>p.status==='pendente').length;
+  const taxa = total ? Math.round(respondidas/total*100) : 0;
+  const mesesNomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const label = mesVal !== '' ? mesesNomes[parseInt(mesVal)] + ' ' + ano : 'Ano ' + ano;
+
+  document.getElementById('metricaStats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Total — ${label}</div><div class="stat-value blue">${total}</div><div class="stat-sub">perguntas registradas</div></div>
+    <div class="stat-card"><div class="stat-label">Respondidas</div><div class="stat-value green">${respondidas}</div><div class="stat-sub">${taxa}% do total</div></div>
+    <div class="stat-card"><div class="stat-label">Pendentes</div><div class="stat-value yellow">${pendentes}</div><div class="stat-sub">aguardando resposta</div></div>
+    <div class="stat-card"><div class="stat-label">Taxa de resposta</div><div class="stat-value purple">${taxa}%</div><div class="stat-sub">eficiência do período</div></div>
+  `;
+
+  const colors = ['#6c63ff','#22c55e','#f59e0b','#3b82f6','#ef4444'];
+  const sites = {};
+  data.forEach(p => { sites[p.site] = (sites[p.site]||0)+1; });
+  const maxSite = Math.max(...Object.values(sites),1);
+  document.getElementById('metricaSites').innerHTML = Object.keys(sites).length ? Object.entries(sites).sort((a,b)=>b[1]-a[1]).map(([s,cnt],i)=>`
+    <div class="metric-row"><div class="metric-row-label"><span class="dot" style="background:${colors[i%5]}"></span>${s}</div>
+    <div style="display:flex;align-items:center;gap:8px"><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(cnt/maxSite*100)}%;background:${colors[i%5]}"></div></div><div class="metric-row-val">${cnt}</div></div></div>
+  `).join('') : '<div style="color:var(--text3);font-size:13px;padding:12px 0">Sem dados</div>';
+
+  const atend = {};
+  data.forEach(p => { atend[p.atendente] = (atend[p.atendente]||0)+1; });
+  const maxAtend = Math.max(...Object.values(atend),1);
+  document.getElementById('metricaAtendentes').innerHTML = Object.keys(atend).length ? Object.entries(atend).sort((a,b)=>b[1]-a[1]).map(([a,cnt],i)=>`
+    <div class="metric-row"><div class="metric-row-label"><span class="dot" style="background:${colors[i%5]}"></span>${a}</div>
+    <div style="display:flex;align-items:center;gap:8px"><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(cnt/maxAtend*100)}%;background:${colors[i%5]}"></div></div><div class="metric-row-val">${cnt}</div></div></div>
+  `).join('') : '<div style="color:var(--text3);font-size:13px;padding:12px 0">Sem dados</div>';
+
+  if (mesVal !== '') {
+    const mesNum = parseInt(mesVal);
+    const diasNoMes = new Date(ano, mesNum+1, 0).getDate();
+    const diasCount = {};
+    for (let d=1;d<=diasNoMes;d++) diasCount[d]=0;
+    data.forEach(p => { const d=new Date(p.criado_em).getDate(); diasCount[d]=(diasCount[d]||0)+1; });
+    const maxDia = Math.max(...Object.values(diasCount),1);
+    document.getElementById('diasTitle').textContent = `📅 Dias de ${mesesNomes[mesNum]}`;
+    const diasComDados = Object.entries(diasCount).filter(([,v])=>v>0);
+    document.getElementById('metricaDias').innerHTML = diasComDados.length ? diasComDados.sort((a,b)=>parseInt(a[0])-parseInt(b[0])).map(([dia,cnt])=>`
+      <div class="metric-row"><div class="metric-row-label">Dia ${dia}</div>
+      <div style="display:flex;align-items:center;gap:8px"><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(cnt/maxDia*100)}%"></div></div><div class="metric-row-val">${cnt}</div></div></div>
+    `).join('') : '<div style="color:var(--text3);font-size:13px;padding:12px 0">Sem dados no mês</div>';
+  } else {
+    const mNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const mCount = {};
+    for (let m=0;m<12;m++) mCount[m]=0;
+    data.forEach(p => { mCount[new Date(p.criado_em).getMonth()]++; });
+    const maxM = Math.max(...Object.values(mCount),1);
+    document.getElementById('diasTitle').textContent = `📅 Por mês — ${ano}`;
+    document.getElementById('metricaDias').innerHTML = Object.entries(mCount).map(([m,cnt])=>`
+      <div class="metric-row"><div class="metric-row-label">${mNomes[parseInt(m)]}</div>
+      <div style="display:flex;align-items:center;gap:8px"><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(cnt/maxM*100)}%"></div></div><div class="metric-row-val">${cnt}</div></div></div>
+    `).join('');
+  }
+}
+
+// ==================== USUÁRIOS ====================
+async function renderUsuarios() {
+  const { data } = await db.from('usuarios').select('*').order('criado_em');
+  const tb = document.getElementById('tbUsuarios');
+  tb.innerHTML = (data||[]).map(u => `
+    <tr>
+      <td style="font-weight:500">${u.nome}</td>
+      <td style="color:var(--text2);font-size:13px">${u.email}</td>
+      <td><span class="tag ${u.perfil==='admin'?'tag-done':'tag-pending'}">${u.perfil==='admin'?'Admin':'Atendente'}</span></td>
+      <td style="font-size:12px;color:var(--text3)">${fmtDate(u.criado_em)}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="editarUsuario('${u.id}')">✏️</button>
+        ${u.id !== currentUser.id ? `<button class="btn btn-danger btn-sm" onclick="deletarUsuario('${u.id}')" style="margin-left:4px">🗑️</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function abrirModalUser() {
+  editingUserId = null;
+  document.getElementById('modalUserTitle').textContent = '+ Novo usuário';
+  ['uNome','uEmail','uSenha'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('uPerfil').value = 'atendente';
+  document.getElementById('modalUser').style.display = 'flex';
+}
+
+async function editarUsuario(id) {
+  const { data } = await db.from('usuarios').select('*').eq('id', id).single();
+  editingUserId = id;
+  document.getElementById('modalUserTitle').textContent = '✏️ Editar usuário';
+  document.getElementById('uNome').value = data.nome;
+  document.getElementById('uEmail').value = data.email;
+  document.getElementById('uSenha').value = data.senha;
+  document.getElementById('uPerfil').value = data.perfil;
+  document.getElementById('modalUser').style.display = 'flex';
+}
+
+async function salvarUsuario() {
+  const nome = document.getElementById('uNome').value.trim();
+  const email = document.getElementById('uEmail').value.trim();
+  const senha = document.getElementById('uSenha').value;
+  const perfil = document.getElementById('uPerfil').value;
+  if (!nome || !email || !senha) { toast('Preencha todos os campos', true); return; }
+
+  if (editingUserId) {
+    const { error } = await db.from('usuarios').update({nome, email, senha, perfil}).eq('id', editingUserId);
+    if (error) { toast('Erro: ' + error.message, true); return; }
+  } else {
+    const { error } = await db.from('usuarios').insert({id:'u'+Date.now(), nome, email, senha, perfil, criado_em: new Date().toISOString()});
+    if (error) { toast('Erro: ' + error.message, true); return; }
+  }
+  fecharModal('modalUser');
+  renderUsuarios();
+  toast('Usuário salvo!');
+}
+
+async function deletarUsuario(id) {
+  if (!confirm('Excluir este usuário?')) return;
+  const { error } = await db.from('usuarios').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir', true); return; }
+  renderUsuarios();
+  toast('Usuário removido');
+}
+
+// ==================== UTILS ====================
+function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function refreshStats() {
+  const hoje = new Date().toDateString();
+  document.getElementById('statHoje').textContent = allPerguntas.filter(p=>new Date(p.criado_em).toDateString()===hoje).length;
+  document.getElementById('statPend').textContent = allPerguntas.filter(p=>p.status==='pendente').length;
+  document.getElementById('statTotal').textContent = allPerguntas.length;
+  document.getElementById('statResp').textContent = allPerguntas.filter(p=>p.status==='respondida').length;
+}
+
+function updatePendBadge() {
+  document.getElementById('pendBadge').textContent = allPerguntas.filter(p=>p.status==='pendente').length;
+}
+
+function toast(msg, isError=false) {
+  const t = document.createElement('div');
+  t.className = 'toast' + (isError?' error':'');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3000);
+}
+
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.style.display='none'; }));
+
+// INIT
+tryAutoLogin();
+</script>
+</body>
+</html>
